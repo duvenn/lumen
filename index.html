@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Lumen</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%22%233DDC97%22/></svg>">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -177,8 +177,19 @@ body {
 .upload-main { font-size:13.5px; font-weight:600; }
 .upload-sub { font-size:12px; color:var(--text-faint); }
 .modal-foot { font-size:11.5px; color:var(--text-faint); margin-top:14px; line-height:1.5; }
-.upload-progress-list { display:flex; flex-direction:column; gap:8px; margin-top:14px; max-height:160px; overflow-y:auto; }
-.upload-progress-item { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-dim); }
+.modal-card.wide { width: 480px; }
+.staged-list { display:flex; flex-direction:column; gap:14px; max-height:60vh; overflow-y:auto; }
+.staged-card { background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+.staged-card-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.staged-filename { font-size:12px; color:var(--text-faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.staged-status { font-size:11.5px; font-weight:700; flex-shrink:0; }
+.staged-status.done { color: var(--accent); }
+.staged-status.error { color: var(--danger); }
+.staged-status.uploading { color: var(--text-dim); }
+.staged-fields { display:flex; flex-direction:column; gap:8px; }
+.staged-fields .login-input { padding:9px 11px; font-size:13px; }
+.staged-artist-list { position:absolute; top:100%; left:0; right:0; background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-top:4px; max-height:140px; overflow-y:auto; z-index:50; box-shadow:0 12px 28px rgba(0,0,0,.5); }
+.staged-actions { display:flex; gap:8px; }
 
 .drop-veil { position:fixed; inset:0; background:rgba(8,8,10,.82); z-index:300; display:flex; align-items:center; justify-content:center; }
 .drop-card { display:flex; flex-direction:column; align-items:center; gap:10px; color:var(--text); border:2px dashed var(--accent); border-radius:16px; padding:40px 60px; }
@@ -205,9 +216,68 @@ body {
   .player-right { gap:4px; }
   .vol-track { display:none; }
 }
+
+/* ---------- iPhone-specific fixes ----------
+   - 100dvh instead of 100vh: avoids Safari's address-bar resize jank
+   - safe-area insets: keeps content clear of the notch/home-indicator
+   - 16px min font-size on inputs: stops iOS auto-zooming on focus
+   - explicit tap-highlight removal + touch-action for snappier taps
+*/
+html, body { height: 100%; height: 100dvh; }
+#app { height: 100vh; height: 100dvh; }
+* { -webkit-tap-highlight-color: transparent; }
+button, input { touch-action: manipulation; }
+
+@supports (padding: max(0px)) {
+  .login-screen { padding-top: max(24px, env(safe-area-inset-top)); padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+  .top-bar { padding-top: max(16px, env(safe-area-inset-top)); }
+  .player-bar { padding-bottom: max(0px, env(safe-area-inset-bottom)); height: calc(84px + env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 760px) {
+  .login-input, .search-wrap input { font-size: 16px; } /* prevents iOS zoom-on-focus */
+  @supports (padding: max(0px)) {
+    .player-bar { height: calc(74px + env(safe-area-inset-bottom)); }
+  }
+}
+
+/* ---------- Startup / splash screen ---------- */
+.splash-screen {
+  position: fixed; inset: 0; z-index: 1000;
+  background: radial-gradient(circle at 50% 40%, #16241c 0%, #0b0b0e 65%);
+  display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 18px;
+  animation: splash-fade-out 0.5s ease 1.9s forwards;
+}
+.splash-mark {
+  width: 84px; height: 84px; border-radius: 24px;
+  background: linear-gradient(135deg, var(--accent), #1f6e4f);
+  display: flex; align-items: center; justify-content: center;
+  color: #06140d; font-weight: 800; font-size: 38px;
+  box-shadow: 0 20px 60px rgba(61,220,151,0.25);
+  opacity: 0; transform: scale(0.7);
+  animation: splash-mark-in 0.6s cubic-bezier(.2,.9,.3,1.3) 0.1s forwards;
+}
+.splash-name {
+  font-size: 30px; font-weight: 800; letter-spacing: -0.02em;
+  opacity: 0; transform: translateY(8px);
+  animation: splash-text-in 0.5s ease 0.55s forwards;
+}
+.splash-tagline {
+  font-size: 13px; color: var(--text-faint); letter-spacing: 0.04em; text-transform: uppercase;
+  opacity: 0;
+  animation: splash-text-in 0.5s ease 0.85s forwards;
+}
+@keyframes splash-mark-in { to { opacity: 1; transform: scale(1); } }
+@keyframes splash-text-in { to { opacity: 1; transform: translateY(0); } }
+@keyframes splash-fade-out { to { opacity: 0; visibility: hidden; pointer-events: none; } }
 </style>
 </head>
 <body>
+<div class="splash-screen" id="splash-screen">
+  <div class="splash-mark">L</div>
+  <div class="splash-name">Lumen</div>
+  <div class="splash-tagline">Your sound, shared</div>
+</div>
 <div id="app"></div>
 
 <script>
@@ -294,7 +364,8 @@ const state = {
   toast: null,
   toastIsError: false,
   loginMode: "signin", // signin | signup
-  uploadProgress: [],   // [{name, status}]
+  stagedUploads: [], // [{localId, file, title, artistName, album, primaryArtistId, featureArtistIds, status}]
+  artists: [],        // [{id, name, bio, image_color, auto_streams, manual_stream_adjustment}]
   rememberedDeviceLabel: null,
 };
 
@@ -344,7 +415,7 @@ function loadFresh(song, autoplay) {
   if (autoplay) {
     const playPromise = activeDeck.play();
     if (playPromise) {
-      playPromise.catch(() => {
+      playPromise.then(() => recordPlay(song.id)).catch(() => {
         // Most common real-world cause: the file no longer exists at that
         // storage path (404) or the browser blocked autoplay.
         if (activeDeck.error || activeDeck.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
@@ -580,54 +651,106 @@ function showToast(msg, isError) {
 }
 
 // ---------- file upload (owner only) ----------
-async function handleFiles(fileList) {
+// ---------- staged uploads: file picked -> auto-filled metadata form -> confirm ----------
+function stageFiles(fileList) {
   const files = Array.from(fileList).filter(f =>
     f.type.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(f.name)
   );
   if (!files.length) { showToast("No supported audio files found", true); return; }
 
-  state.uploadProgress = files.map(f => ({ name: f.name, status: "pending" }));
+  state.stagedUploads = files.map(file => {
+    const rawName = file.name.replace(/\.[^/.]+$/, "");
+    let title = rawName, artistGuess = "";
+    if (rawName.includes(" - ")) { const [a, b] = rawName.split(" - "); artistGuess = a.trim(); title = b.trim(); }
+    return {
+      localId: uid(), file, title, artistName: artistGuess,
+      album: "", primaryArtistId: null, featureArtistIds: [],
+      status: "editing" // editing | uploading | done | error
+    };
+  });
+  render();
+}
+
+function stagedEntry(localId) { return state.stagedUploads.find(e => e.localId === localId); }
+
+async function resolveArtistId(name) {
+  name = name.trim();
+  if (!name) return null;
+  const existing = state.artists.find(a => a.name.toLowerCase() === name.toLowerCase());
+  if (existing) return existing.id;
+  const { data, error } = await sb.from("artists").insert({
+    name, created_by: state.profile.id
+  }).select().single();
+  if (error) { console.error("artist create error", error); return null; }
+  const artistRow = { ...data, image_color: colorFor(name) };
+  state.artists.push(artistRow);
+  return data.id;
+}
+
+async function confirmStagedUpload(localId) {
+  const entry = stagedEntry(localId);
+  if (!entry || entry.status === "uploading") return;
+  if (!entry.title.trim()) { showToast("Title is required", true); return; }
+
+  entry.status = "uploading";
   render();
 
-  let successCount = 0;
-  for (const file of files) {
-    const entry = state.uploadProgress.find(e => e.name === file.name);
-    entry.status = "uploading";
-    render();
-    try {
-      const rawName = file.name.replace(/\.[^/.]+$/, "");
-      let title = rawName, artist = "Unknown artist";
-      if (rawName.includes(" - ")) { const [a, b] = rawName.split(" - "); artist = a.trim(); title = b.trim(); }
+  try {
+    const duration = await probeDuration(entry.file);
+    const ext = entry.file.name.split(".").pop();
+    const storagePath = `${state.profile.id}/${uid()}.${ext}`;
 
-      const duration = await probeDuration(file);
-      const ext = file.name.split(".").pop();
-      const storagePath = `${state.profile.id}/${uid()}.${ext}`;
+    const { error: uploadErr } = await sb.storage.from("songs").upload(storagePath, entry.file, {
+      contentType: entry.file.type || "audio/mpeg", upsert: false
+    });
+    if (uploadErr) throw uploadErr;
 
-      const { error: uploadErr } = await sb.storage.from("songs").upload(storagePath, file, {
-        contentType: file.type || "audio/mpeg", upsert: false
-      });
-      if (uploadErr) throw uploadErr;
-
-      const { data: row, error: insertErr } = await sb.from("songs").insert({
-        title, artist, album: "Local upload", duration, color: colorFor(rawName + uid()),
-        storage_path: storagePath, uploaded_by: state.profile.id
-      }).select().single();
-      if (insertErr) throw insertErr;
-
-      const { data: urlData } = sb.storage.from("songs").getPublicUrl(storagePath);
-      state.songs.unshift({ ...row, publicUrl: urlData.publicUrl });
-
-      entry.status = "done";
-      successCount++;
-    } catch (e) {
-      console.error("Upload error", file.name, e);
-      entry.status = "error";
+    const primaryArtistId = entry.primaryArtistId || (entry.artistName ? await resolveArtistId(entry.artistName) : null);
+    const featureIds = [];
+    for (const fname of entry.featureArtistIds) {
+      const fid = typeof fname === "string" && fname.length === 36 ? fname : await resolveArtistId(fname);
+      if (fid) featureIds.push(fid);
     }
+
+    const { data: row, error: insertErr } = await sb.from("songs").insert({
+      title: entry.title.trim(),
+      artist: entry.artistName.trim() || "Unknown artist",
+      album: entry.album.trim() || "Local upload",
+      duration, color: colorFor(entry.title + uid()),
+      storage_path: storagePath, uploaded_by: state.profile.id,
+      primary_artist_id: primaryArtistId
+    }).select().single();
+    if (insertErr) throw insertErr;
+
+    if (primaryArtistId) {
+      await sb.from("song_artists").insert({ song_id: row.id, artist_id: primaryArtistId, role: "primary" });
+    }
+    for (const fid of featureIds) {
+      await sb.from("song_artists").insert({ song_id: row.id, artist_id: fid, role: "feature" });
+    }
+
+    const { data: urlData } = sb.storage.from("songs").getPublicUrl(storagePath);
+    state.songs.unshift({ ...row, publicUrl: urlData.publicUrl });
+
+    entry.status = "done";
+    showToast(`"${row.title}" added — live for everyone now`);
+    render();
+    setTimeout(() => {
+      state.stagedUploads = state.stagedUploads.filter(e => e.localId !== localId);
+      if (state.stagedUploads.length === 0) state.showUploadModal = false;
+      render();
+    }, 900);
+  } catch (e) {
+    console.error("Upload error", entry.file.name, e);
+    entry.status = "error";
+    showToast(`Couldn't add ${entry.file.name}`, true);
     render();
   }
+}
 
-  setTimeout(() => { state.uploadProgress = []; state.showUploadModal = false; render(); }, 900);
-  if (successCount) showToast(`Added ${successCount} song${successCount > 1 ? "s" : ""} — live for everyone now`);
+function removeStagedUpload(localId) {
+  state.stagedUploads = state.stagedUploads.filter(e => e.localId !== localId);
+  render();
 }
 
 function probeDuration(file) {
@@ -669,6 +792,60 @@ async function refreshSongs(silent) {
   const newOnes = incoming.filter(s => !known.has(s.id));
   state.songs = incoming;
   if (!silent && newOnes.length) showToast(`${newOnes.length} new song${newOnes.length > 1 ? "s" : ""} added`);
+  render();
+}
+
+async function refreshArtists() {
+  const { data, error } = await sb.from("artists").select("*").order("name", { ascending: true });
+  if (error) return;
+  state.artists = data.map(a => ({ ...a, image_color: colorFor(a.name) }));
+}
+
+function artistTotalStreams(artist) {
+  return (artist.auto_streams || 0) + (artist.manual_stream_adjustment || 0);
+}
+
+async function recordPlay(songId) {
+  // fire-and-forget; failures here shouldn't interrupt playback
+  try {
+    await sb.rpc("increment_play_count", { p_song_id: songId });
+    const song = state.songs.find(s => s.id === songId);
+    if (song) song.play_count = (song.play_count || 0) + 1;
+    if (song?.primary_artist_id) {
+      const artist = state.artists.find(a => a.id === song.primary_artist_id);
+      if (artist) artist.auto_streams = (artist.auto_streams || 0) + 1;
+    }
+  } catch (e) { /* non-fatal */ }
+}
+
+async function createArtistManually(name) {
+  name = name.trim();
+  if (!name) return;
+  if (state.artists.find(a => a.name.toLowerCase() === name.toLowerCase())) { showToast("Artist already exists", true); return; }
+  const { data, error } = await sb.from("artists").insert({ name, created_by: state.profile.id }).select().single();
+  if (error) { showToast("Couldn't create artist", true); return; }
+  state.artists.push({ ...data, image_color: colorFor(name) });
+  render();
+}
+
+async function setArtistStreamsExact(artistId, value) {
+  const artist = state.artists.find(a => a.id === artistId);
+  if (!artist) return;
+  const newAdjustment = value - (artist.auto_streams || 0);
+  artist.manual_stream_adjustment = newAdjustment;
+  render();
+  await sb.from("artists").update({ manual_stream_adjustment: newAdjustment }).eq("id", artistId);
+}
+
+async function updateArtistBio(artistId, bio) {
+  const artist = state.artists.find(a => a.id === artistId);
+  if (artist) artist.bio = bio;
+  await sb.from("artists").update({ bio }).eq("id", artistId);
+}
+
+async function deleteArtist(artistId) {
+  await sb.from("artists").delete().eq("id", artistId);
+  state.artists = state.artists.filter(a => a.id !== artistId);
   render();
 }
 
@@ -767,6 +944,7 @@ async function init() {
       await registerKnownDevice();
       await loadPlaylistsWithSongs();
       await refreshSongs(true);
+      await refreshArtists();
     } else {
       // session exists but no profile row (shouldn't normally happen) — sign out to recover
       await sb.auth.signOut();
@@ -782,7 +960,7 @@ async function init() {
   // this is the "app updates when the owner adds a file" mechanism for a
   // static site with no push channel.
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && state.profile) refreshSongs(false);
+    if (document.visibilityState === "visible" && state.profile) { refreshSongs(false); refreshArtists(); }
   });
   window.addEventListener("focus", () => { if (state.profile) refreshSongs(false); });
 }
@@ -833,7 +1011,12 @@ function renderLogin() {
 
 function wireLoginEvents() {
   const guestLink = document.getElementById("guest-link");
-  if (guestLink) guestLink.onclick = () => { window.__guestMode = true; render(); };
+  if (guestLink) guestLink.onclick = async () => {
+    window.__guestMode = true;
+    await refreshSongs(true);
+    await refreshArtists();
+    render();
+  };
 
   const tabSignin = document.getElementById("tab-signin");
   const tabSignup = document.getElementById("tab-signup");
@@ -875,6 +1058,7 @@ function wireLoginEvents() {
       await registerKnownDevice();
       await loadPlaylistsWithSongs();
       await refreshSongs(true);
+      await refreshArtists();
       render();
     };
     submitBtn.onclick = doSubmit;
@@ -920,6 +1104,7 @@ function renderSidebar(isOwner, isGuest) {
       <div class="brand"><div class="brand-mark">L</div><span class="brand-name">Lumen</span></div>
       <nav class="nav-block">
         <button class="nav-item ${state.view.screen === "home" ? "active" : ""}" data-action="go-home">⌂ Home</button>
+        <button class="nav-item ${state.view.screen === "artists" || state.view.screen === "artist-detail" ? "active" : ""}" data-action="go-artists">♫ Artists</button>
         ${isOwner ? `<button class="nav-item" data-action="open-upload">+ Add songs</button>` : ""}
       </nav>
       <div class="library-block">
@@ -946,7 +1131,75 @@ function renderSidebar(isOwner, isGuest) {
 
 function renderMainContent(filtered, isOwner) {
   if (state.view.screen === "playlist") return renderPlaylistView(isOwner);
+  if (state.view.screen === "artists") return renderArtistsListView(isOwner);
+  if (state.view.screen === "artist-detail") return renderArtistDetailView(isOwner);
   return renderHomeView(filtered, isOwner);
+}
+
+function renderArtistsListView(isOwner) {
+  const sorted = [...state.artists].sort((a, b) => artistTotalStreams(b) - artistTotalStreams(a));
+  return `
+    <section class="section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h2 class="section-title" style="margin:0;">Artists</h2>
+        ${isOwner ? `<button class="primary-btn" data-action="open-new-artist" style="padding:8px 16px;font-size:12.5px;">+ New artist</button>` : ""}
+      </div>
+      ${sorted.length === 0 ? `
+        <div class="empty-state">
+          <div class="empty-art">♫</div>
+          <h2>No artists yet</h2>
+          <p>${isOwner ? "Artists are created automatically when you add songs, or you can add one directly." : "The owner hasn't added any artist profiles yet."}</p>
+        </div>
+      ` : `
+        <div class="card-grid">
+          ${sorted.map(artist => `
+            <button class="song-card" data-action="open-artist" data-id="${artist.id}">
+              <div class="card-art" style="background:linear-gradient(135deg,${artist.image_color},#14141a);aspect-ratio:1;border-radius:50%;">♫</div>
+              <div class="card-title">${escapeHtml(artist.name)}</div>
+              <div class="card-artist">${artistTotalStreams(artist).toLocaleString()} streams</div>
+            </button>`).join("")}
+        </div>
+      `}
+    </section>`;
+}
+
+function renderArtistDetailView(isOwner) {
+  const artist = state.artists.find(a => a.id === state.view.artistId);
+  if (!artist) return `<div class="empty-state"><p>Artist not found.</p></div>`;
+  const songs = state.songs.filter(s => s.primary_artist_id === artist.id);
+  const totalStreams = artistTotalStreams(artist);
+  return `
+    <div class="playlist-hero" style="background:linear-gradient(160deg,${artist.image_color}33,transparent 70%)">
+      <div class="hero-art" style="border-radius:50%;">♫</div>
+      <div class="hero-info">
+        <span class="hero-kicker">Artist</span>
+        <h1 class="hero-title">${escapeHtml(artist.name)}</h1>
+        <span class="hero-meta">${totalStreams.toLocaleString()} total streams · ${songs.length} song${songs.length === 1 ? "" : "s"}</span>
+      </div>
+    </div>
+    ${isOwner ? `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:24px;display:flex;flex-direction:column;gap:12px;">
+        <div>
+          <label style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px;">Bio</label>
+          <textarea id="artist-bio-input" class="login-input" style="resize:vertical;min-height:60px;" placeholder="Write a short bio...">${escapeHtml(artist.bio || "")}</textarea>
+          <button class="primary-btn" id="save-bio-btn" data-id="${artist.id}" style="margin-top:8px;padding:7px 14px;font-size:12px;">Save bio</button>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:12px;">
+          <label style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px;">
+            Stream count (${(artist.auto_streams || 0).toLocaleString()} auto-counted from plays, ${artist.manual_stream_adjustment >= 0 ? "+" : ""}${(artist.manual_stream_adjustment || 0).toLocaleString()} manual adjustment)
+          </label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="number" id="artist-streams-input" class="login-input" style="flex:1;" value="${totalStreams}">
+            <button class="primary-btn" id="set-streams-btn" data-id="${artist.id}" style="padding:7px 14px;font-size:12px;white-space:nowrap;">Set total</button>
+          </div>
+        </div>
+        <button class="dropdown-item danger" data-action="delete-artist" data-id="${artist.id}" style="justify-content:center;border:1px solid var(--border);border-radius:8px;padding:8px;">Delete artist profile</button>
+      </div>
+    ` : artist.bio ? `<p style="color:var(--text-dim);font-size:13.5px;line-height:1.6;margin-bottom:24px;max-width:600px;">${escapeHtml(artist.bio)}</p>` : ""}
+    ${songs.length === 0
+      ? `<div class="empty-state"><p>No songs credited to this artist as primary yet.</p></div>`
+      : renderSongTable(songs, isOwner)
+    }`;
 }
 
 function renderHomeView(songs, isOwner) {
@@ -1101,30 +1354,56 @@ function renderPlayerBar(song) {
 }
 
 function renderUploadModal() {
-  const hasProgress = state.uploadProgress.length > 0;
+  const hasStaged = state.stagedUploads.length > 0;
   return `
     <div class="modal-veil" data-action="close-upload">
-      <div class="modal-card" data-stop-propagation>
+      <div class="modal-card ${hasStaged ? "wide" : ""}" data-stop-propagation>
         <div class="modal-head"><h3>Add songs to Lumen</h3><button class="icon-btn small" data-action="close-upload">✕</button></div>
-        ${!hasProgress ? `
+        ${!hasStaged ? `
           <div class="upload-zone" id="upload-zone">
             <span style="font-size:26px;">⬆</span>
             <p class="upload-main">Drop audio files here, or click to browse</p>
-            <p class="upload-sub">MP3, WAV, M4A, OGG — name files "Artist - Title" for best results</p>
+            <p class="upload-sub">MP3, WAV, M4A, OGG — title and artist are guessed from the filename, then you can fill in the rest</p>
           </div>
           <input type="file" id="file-input" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac" multiple style="display:none">
           <p class="modal-foot">Uploaded songs are stored centrally and appear for everyone using the app — no need to re-upload per device.</p>
         ` : `
-          <div class="upload-progress-list">
-            ${state.uploadProgress.map(e => `
-              <div class="upload-progress-item">
-                <span>${e.status === "done" ? "✓" : e.status === "error" ? "✕" : e.status === "uploading" ? "⬆" : "…"}</span>
-                <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(e.name)}</span>
-                <span style="color:${e.status === "error" ? "var(--danger)" : "var(--text-faint)"}">${e.status}</span>
-              </div>`).join("")}
+          <div class="staged-list">
+            ${state.stagedUploads.map(renderStagedUploadCard).join("")}
           </div>
         `}
       </div>
+    </div>`;
+}
+
+function renderStagedUploadCard(entry) {
+  const matches = entry.artistName
+    ? state.artists.filter(a => a.name.toLowerCase().includes(entry.artistName.toLowerCase())).slice(0, 5)
+    : [];
+  const statusLabel = { editing: "", uploading: "Uploading…", done: "✓ Added", error: "✕ Failed" }[entry.status];
+  return `
+    <div class="staged-card" data-staged-id="${entry.localId}">
+      <div class="staged-card-head">
+        <span class="staged-filename">${escapeHtml(entry.file.name)}</span>
+        ${statusLabel ? `<span class="staged-status ${entry.status}">${statusLabel}</span>` : ""}
+      </div>
+      <div class="staged-fields" ${entry.status !== "editing" ? 'style="opacity:.5;pointer-events:none;"' : ""}>
+        <input class="login-input staged-title" placeholder="Title" value="${escapeHtml(entry.title)}">
+        <div style="position:relative;">
+          <input class="login-input staged-artist" placeholder="Primary artist" value="${escapeHtml(entry.artistName)}" autocomplete="off">
+          <div class="staged-artist-list" style="display:none;">
+            ${matches.map(a => `<div class="dropdown-item staged-artist-option" data-id="${a.id}" data-name="${escapeHtml(a.name)}">${escapeHtml(a.name)}</div>`).join("")}
+          </div>
+        </div>
+        <input class="login-input staged-album" placeholder="Album (optional)" value="${escapeHtml(entry.album)}">
+        <input class="login-input staged-features" placeholder="Featured artists, comma separated (optional)" value="${escapeHtml(entry.featureArtistIds.join(", "))}">
+      </div>
+      ${entry.status === "editing" ? `
+        <div class="staged-actions">
+          <button class="dropdown-item staged-remove" style="border:1px solid var(--border);border-radius:6px;justify-content:center;">Remove</button>
+          <button class="primary-btn staged-confirm" style="flex:1;padding:9px;font-size:12.5px;justify-content:center;">Upload</button>
+        </div>
+      ` : ""}
     </div>`;
 }
 
@@ -1148,6 +1427,7 @@ function wireAppEvents() {
   const signoutBtn = document.getElementById("signout-btn");
   if (signoutBtn) signoutBtn.onclick = () => { if (!state.profile) { window.__guestMode = false; render(); } else signOut(); };
 
+  // ---- upload modal: file picking ----
   const fileInput = document.getElementById("file-input");
   const uploadZone = document.getElementById("upload-zone");
   if (uploadZone && fileInput) {
@@ -1156,17 +1436,80 @@ function wireAppEvents() {
     uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("drag"));
     uploadZone.addEventListener("drop", e => {
       e.preventDefault(); uploadZone.classList.remove("drag");
-      if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+      if (e.dataTransfer.files.length) stageFiles(e.dataTransfer.files);
     });
   }
-  if (fileInput) fileInput.addEventListener("change", e => { if (e.target.files.length) handleFiles(e.target.files); });
+  if (fileInput) fileInput.addEventListener("change", e => { if (e.target.files.length) stageFiles(e.target.files); });
 
   if (state.profile?.is_owner) {
     document.body.ondragover = e => e.preventDefault();
-    document.body.ondrop = e => { e.preventDefault(); if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); };
+    document.body.ondrop = e => {
+      e.preventDefault();
+      if (e.dataTransfer.files.length) { state.showUploadModal = true; stageFiles(e.dataTransfer.files); }
+    };
   } else {
     document.body.ondragover = null;
     document.body.ondrop = null;
+  }
+
+  // ---- staged upload metadata forms ----
+  document.querySelectorAll("[data-staged-id]").forEach(card => {
+    const localId = card.dataset.stagedId;
+    const entry = stagedEntry(localId);
+    if (!entry) return;
+
+    const titleInput = card.querySelector(".staged-title");
+    const artistInput = card.querySelector(".staged-artist");
+    const albumInput = card.querySelector(".staged-album");
+    const featuresInput = card.querySelector(".staged-features");
+    const confirmBtn = card.querySelector(".staged-confirm");
+    const removeBtn = card.querySelector(".staged-remove");
+
+    if (titleInput) titleInput.addEventListener("input", e => { entry.title = e.target.value; });
+    if (artistInput) {
+      artistInput.addEventListener("input", e => { entry.artistName = e.target.value; });
+      // simple autocomplete from known artists
+      const list = card.querySelector(".staged-artist-list");
+      if (list) {
+        artistInput.addEventListener("focus", () => { list.style.display = "block"; });
+        artistInput.addEventListener("blur", () => { setTimeout(() => { list.style.display = "none"; }, 150); });
+      }
+    }
+    if (albumInput) albumInput.addEventListener("input", e => { entry.album = e.target.value; });
+    if (featuresInput) featuresInput.addEventListener("input", e => {
+      entry.featureArtistIds = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
+    });
+    if (confirmBtn) confirmBtn.addEventListener("click", () => confirmStagedUpload(localId));
+    if (removeBtn) removeBtn.addEventListener("click", () => removeStagedUpload(localId));
+
+    card.querySelectorAll(".staged-artist-option").forEach(opt => {
+      opt.addEventListener("mousedown", e => {
+        e.preventDefault();
+        entry.artistName = opt.dataset.name;
+        entry.primaryArtistId = opt.dataset.id;
+        if (artistInput) artistInput.value = opt.dataset.name;
+      });
+    });
+  });
+
+  // ---- artist detail page: bio + stream count editors ----
+  const saveBioBtn = document.getElementById("save-bio-btn");
+  if (saveBioBtn) {
+    saveBioBtn.onclick = () => {
+      const bio = document.getElementById("artist-bio-input").value;
+      updateArtistBio(saveBioBtn.dataset.id, bio);
+      showToast("Bio saved");
+    };
+  }
+  const setStreamsBtn = document.getElementById("set-streams-btn");
+  if (setStreamsBtn) {
+    setStreamsBtn.onclick = () => {
+      const val = parseInt(document.getElementById("artist-streams-input").value, 10);
+      if (!isNaN(val) && val >= 0) {
+        setArtistStreamsExact(setStreamsBtn.dataset.id, val);
+        showToast("Stream count updated");
+      }
+    };
   }
 }
 
@@ -1178,8 +1521,30 @@ function handleAction(e) {
 
   switch (action) {
     case "go-home": state.view = { screen: "home", playlistId: null }; render(); break;
+    case "go-artists": state.view = { screen: "artists" }; render(); break;
+    case "open-artist": state.view = { screen: "artist-detail", artistId: id }; render(); break;
+    case "open-new-artist": {
+      if (!state.profile?.is_owner) break;
+      const name = prompt("New artist name");
+      if (name && name.trim()) {
+        createArtistManually(name).then(() => {
+          const newArtist = state.artists.find(a => a.name.toLowerCase() === name.trim().toLowerCase());
+          if (newArtist) { state.view = { screen: "artist-detail", artistId: newArtist.id }; render(); }
+        });
+      }
+      break;
+    }
+    case "delete-artist": {
+      if (!state.profile?.is_owner) break;
+      if (confirm("Delete this artist profile? Songs stay, but lose their artist link.")) {
+        deleteArtist(id);
+        state.view = { screen: "artists" };
+        render();
+      }
+      break;
+    }
     case "open-upload": if (state.profile?.is_owner) { state.showUploadModal = true; render(); } break;
-    case "close-upload": state.showUploadModal = false; state.uploadProgress = []; render(); break;
+    case "close-upload": state.showUploadModal = false; state.stagedUploads = []; render(); break;
     case "create-playlist": if (state.profile) createPlaylist(); break;
     case "open-playlist": state.view = { screen: "playlist", playlistId: id }; render(); break;
     case "rename-playlist": {
@@ -1242,6 +1607,10 @@ document.addEventListener("click", e => {
 });
 
 init();
+setTimeout(() => {
+  const splash = document.getElementById("splash-screen");
+  if (splash) splash.remove();
+}, 2500);
 </script>
 </body>
 </html>

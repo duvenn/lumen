@@ -850,18 +850,26 @@ async function deleteArtist(artistId) {
 }
 
 // ---------- auth ----------
+// Supabase requires a syntactically valid email even though no mail is ever
+// sent (confirmations are off). ".local" is not a real TLD and Supabase's
+// own validator rejects it outright — ".app" passes format validation.
+function usernameToEmail(username) {
+  const cleaned = username.toLowerCase().replace(/[^a-z0-9_.-]/g, "");
+  const safe = cleaned.length ? cleaned : "user" + Date.now().toString(36);
+  return `${safe}@lumen-user.app`;
+}
+
 async function signUp(username, password) {
   username = username.trim();
   if (username.length < 3) return { error: "Username must be at least 3 characters." };
   if (password.length < 6) return { error: "Password must be at least 6 characters." };
 
-  // Supabase Auth requires an email; we synthesize one from the username so
-  // people only ever think in terms of "username + password."
-  const syntheticEmail = `${username.toLowerCase().replace(/[^a-z0-9_.-]/g, "")}@lumen.local`;
+  const syntheticEmail = usernameToEmail(username);
 
   const { data, error } = await sb.auth.signUp({ email: syntheticEmail, password });
   if (error) {
     if (/already registered/i.test(error.message)) return { error: "That username is taken." };
+    if (/invalid/i.test(error.message)) return { error: "That username contains characters that aren't supported — try letters and numbers." };
     return { error: error.message };
   }
 
@@ -882,7 +890,7 @@ async function checkIfFirstUser() {
 
 async function signIn(username, password) {
   username = username.trim();
-  const syntheticEmail = `${username.toLowerCase().replace(/[^a-z0-9_.-]/g, "")}@lumen.local`;
+  const syntheticEmail = usernameToEmail(username);
   const { data, error } = await sb.auth.signInWithPassword({ email: syntheticEmail, password });
   if (error) return { error: "Incorrect username or password." };
   return { ok: true, session: data.session };
